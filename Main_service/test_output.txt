@@ -1,0 +1,12 @@
+FAIL	github.com/baigel/lms/main-service/cmd [build failed]
+FAIL	github.com/baigel/lms/main-service/docs [build failed]
+?   	github.com/baigel/lms/main-service/internal/config	[no test files]
+?   	github.com/baigel/lms/main-service/internal/handler	[no test files]
+?   	github.com/baigel/lms/main-service/internal/middleware	[no test files]
+?   	github.com/baigel/lms/main-service/internal/model	[no test files]
+?   	github.com/baigel/lms/main-service/internal/repository	[no test files]
+?   	github.com/baigel/lms/main-service/internal/repository/mocks	[no test files]
+ok  	github.com/baigel/lms/main-service/internal/service	1.259s
+?   	github.com/baigel/lms/main-service/pkg/database	[no test files]
+?   	github.com/baigel/lms/main-service/pkg/logger	[no test files]
+FAIL
