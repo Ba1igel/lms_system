@@ -1,4 +1,9 @@
 /vendor/
+Main_service/vendor/
+User_service/vendor/
 *.exe
 *.bin
+*.out
 .env
+.idea/
+.vscode/
