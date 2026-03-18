@@ -3,6 +3,8 @@ FROM golang:1.24-alpine AS builder
 
 ENV GOTOOLCHAIN=local
 
+RUN apk add --no-cache tzdata ca-certificates
+
 WORKDIR /app
 
 COPY go.mod go.sum ./
@@ -15,7 +17,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-s -w" -o main ./cmd
 # Stage 2: Final
 FROM alpine:3.21
 
-RUN apk --no-cache add ca-certificates tzdata
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 WORKDIR /app
 
