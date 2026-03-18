@@ -43,10 +43,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	token, err := h.kc.Login(r.Context(), req.Username, req.Password)
 	if err != nil {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-		return 
+		return
 	}
 
-	w.Header().Set("Content-type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"access_token":  token.AccessToken,
 		"refresh_token": token.RefreshToken,
@@ -65,30 +65,75 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context() 
+	ctx := r.Context()
 	adminToken, err := h.kc.GetAdminToken(ctx)
 	if err != nil {
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 
-	err = h.kc.RegisterUser(ctx, adminToken, req.Username, req.Email, req.Password) 
+	err = h.kc.RegisterUser(ctx, adminToken, req.Username, req.Email, req.Password)
 	if err != nil {
 		http.Error(w, "Failed to register user", http.StatusInternalServerError)
 		return
 	}
-	
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Header().Set("Content-type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "User created",
 	})
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.kc.RefreshToken(r.Context(), req.RefreshToken)
+	if err != nil {
+		http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"access_token":  token.AccessToken,
+		"refresh_token": token.RefreshToken,
+	})
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	err := h.kc.Logout(r.Context(), req.RefreshToken)
+	if err != nil {
+		http.Error(w, "Logout failed", http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Logged out",
+	})
 }

@@ -23,20 +23,17 @@ import (
 // @host localhost:8080
 // @BasePath /api/v1
 func main() {
-	// Initialize logger
+
 	logger.Init()
 
-	// Load config
 	cfg := config.Load()
 
-	// Connect to database
 	db, err := database.Connect(cfg)
 	if err != nil {
 		logger.Log.Fatalf("Failed to connect to database: %v", err)
 	}
 	logger.Log.Info("Connected to database successfully")
 
-	// Run migrations
 	sqlDB, err := db.DB()
 	if err != nil {
 		logger.Log.Fatalf("Failed to get sql.DB: %v", err)
@@ -51,51 +48,43 @@ func main() {
 	}
 	logger.Log.Info("Migrations applied successfully")
 
-	// Initialize repositories
 	courseRepo := repository.NewCourseRepository(db)
 	chapterRepo := repository.NewChapterRepository(db)
 	lessonRepo := repository.NewLessonRepository(db)
 
-	// Initialize services
 	courseSvc := service.NewCourseService(courseRepo)
 	chapterSvc := service.NewChapterService(chapterRepo)
 	lessonSvc := service.NewLessonService(lessonRepo)
 
-	// Initialize handlers
 	courseHandler := handler.NewCourseHandler(courseSvc)
 	chapterHandler := handler.NewChapterHandler(chapterSvc)
 	lessonHandler := handler.NewLessonHandler(lessonSvc)
 
-	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 
-	// Middleware
 	router.Use(gin.Recovery())
 	router.Use(middleware.LoggerMiddleware())
 	router.Use(middleware.ErrorHandlerMiddleware())
+	router.Use(middleware.AuthMiddleware(cfg.KeycloakURL, cfg.KeycloakClientID, cfg.KeycloakSecret, cfg.KeycloakRealm))
 
-	// Swagger route
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// API Routes
 	api := router.Group("/api/v1")
 	{
-		// Courses
+
 		api.POST("/courses", courseHandler.CreateCourse)
 		api.GET("/courses", courseHandler.GetAllCourses)
 		api.GET("/courses/:id", courseHandler.GetCourseByID)
 		api.PUT("/courses/:id", courseHandler.UpdateCourse)
 		api.DELETE("/courses/:id", courseHandler.DeleteCourse)
 
-		// Chapters
 		api.POST("/chapters", chapterHandler.CreateChapter)
 		api.GET("/courses/:course_id/chapters", chapterHandler.GetChaptersByCourseID)
 		api.GET("/chapters/:id", chapterHandler.GetChapterByID)
 		api.PUT("/chapters/:id", chapterHandler.UpdateChapter)
 		api.DELETE("/chapters/:id", chapterHandler.DeleteChapter)
 
-		// Lessons
 		api.POST("/lessons", lessonHandler.CreateLesson)
 		api.GET("/chapters/:chapter_id/lessons", lessonHandler.GetLessonsByChapterID)
 		api.GET("/lessons/:id", lessonHandler.GetLessonByID)

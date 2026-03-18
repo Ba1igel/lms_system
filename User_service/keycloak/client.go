@@ -2,6 +2,7 @@ package keycloak
 
 import (
 	"context"
+
 	"github.com/Nerzal/gocloak/v13"
 )
 
@@ -39,11 +40,19 @@ func (c *Client) RegisterUser(ctx context.Context, token string, username, email
 		Email:    &email,
 		Enabled:  gocloak.BoolP(true),
 	}
-	
+
 	userID, err := c.gocloak.CreateUser(ctx, token, c.realm, user)
 	if err != nil {
 		return err
 	}
 
 	return c.gocloak.SetPassword(ctx, token, userID, c.realm, password, false)
+}
+
+func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*gocloak.JWT, error) {
+	return c.gocloak.RefreshToken(ctx, refreshToken, c.clientID, c.clientSecret, c.realm)
+}
+
+func (c *Client) Logout(ctx context.Context, refreshToken string) error {
+	return c.gocloak.Logout(ctx, c.clientID, c.clientSecret, c.realm, refreshToken)
 }

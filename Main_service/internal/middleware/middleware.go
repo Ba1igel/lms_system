@@ -11,10 +11,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// responseBodyWriter is a custom writer to capture the response status
 type responseBodyWriter struct {
 	gin.ResponseWriter
 	body *bytes.Buffer
+	
 }
 
 func (r responseBodyWriter) Write(b []byte) (int, error) {
@@ -22,12 +22,10 @@ func (r responseBodyWriter) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
-// LoggerMiddleware logs POST, PUT, DELETE requests using Logrus
 func LoggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
-		// Read body for logging if needed
 		var requestBody []byte
 		if c.Request.Body != nil {
 			requestBody, _ = io.ReadAll(c.Request.Body)
@@ -63,15 +61,12 @@ func LoggerMiddleware() gin.HandlerFunc {
 	}
 }
 
-// ErrorHandlerMiddleware provides unified error handling
 func ErrorHandlerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 
-		if len(c.Errors) > 0 {
+		if len(c.Errors) > 0 && !c.Writer.Written() {
 			err := c.Errors.Last()
-			
-			// Custom error logic can be placed here based on err.Type or err.Err
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": gin.H{
 					"message": err.Error(),
