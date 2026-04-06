@@ -1,0 +1,116 @@
+services:
+
+  # ─────────────────────────────────────────────
+  # KEYCLOAK PostgreSQL (отдельная БД для Keycloak)
+  # ─────────────────────────────────────────────
+  keycloak-db:
+    image: postgres:15-alpine
+    container_name: keycloak_db
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: keycloak
+    ports:
+      - "5433:5432"
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
+  # KEYCLOAK (bitnami — Docker Hub, quay.io заблокирован)
+  # ─────────────────────────────────────────────
+  keycloak:
+    image: bitnami/keycloak:23
+    container_name: keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_DATABASE_HOST: keycloak-db
+      KEYCLOAK_DATABASE_PORT: 5432
+      KEYCLOAK_DATABASE_NAME: keycloak
+      KEYCLOAK_DATABASE_USER: keycloak
+      KEYCLOAK_DATABASE_PASSWORD: keycloak
+      KEYCLOAK_HTTP_PORT: 8090
+      KEYCLOAK_EXTRA_ARGS: --import-realm
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/bitnami/keycloak/data/import/realm-export.json
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # LMS MAIN PostgreSQL
+  # ─────────────────────────────────────────────
+  main-db:
+    image: postgres:15-alpine
+    container_name: main_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: lms_main
+    ports:
+      - "5432:5432"
+    volumes:
+      - main_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
+  # MAIN SERVICE (courses, chapters, lessons)
+  # ─────────────────────────────────────────────
+  main-service:
+    build:
+      context: ./Main_service
+      dockerfile: Dockerfile
+    container_name: main_service
+    ports:
+      - "8080:8080"
+    environment:
+      APP_PORT: "8080"
+      DB_HOST: main-db
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgrespassword
+      DB_NAME: lms_main
+      KEYCLOAK_URL: http://keycloak:8090
+      KEYCLOAK_REALM: lms-realm
+    depends_on:
+      main-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # USER SERVICE (auth: register, login, refresh)
+  # ─────────────────────────────────────────────
+  user-service:
+    build:
+      context: ./User_service
+      dockerfile: Dockerfile
+    container_name: user_service
+    ports:
+      - "8081:8081"
+    environment:
+      APP_PORT: "8081"
+      KEYCLOAK_URL: http://keycloak:8090
+      KEYCLOAK_REALM: lms-realm
+      KEYCLOAK_CLIENT_ID: lms-backend
+      KEYCLOAK_SECRET: lms-backend-secret
+    depends_on:
+      - keycloak
+    restart: unless-stopped
+
+volumes:
+  keycloak_db_data:
+  main_db_data:
