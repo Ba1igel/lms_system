@@ -1,0 +1,97 @@
+{
+  "realm": "lms-realm",
+  "enabled": true,
+  "displayName": "LMS Realm",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "accessTokenLifespan": 900,
+  "ssoSessionMaxLifespan": 36000,
+
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "LMS Administrator — full access"
+      },
+      {
+        "name": "teacher",
+        "description": "Teacher — can create and manage courses"
+      },
+      {
+        "name": "student",
+        "description": "Student — can enroll and view courses"
+      }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "lms-backend",
+      "enabled": true,
+      "secret": "lms-backend-secret",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    }
+  ],
+
+  "users": [
+    {
+      "username": "lms_admin",
+      "email": "admin@lms.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"]
+    },
+    {
+      "username": "teacher_john",
+      "email": "john@lms.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "teacher123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["teacher"]
+    },
+    {
+      "username": "student_alice",
+      "email": "alice@lms.com",
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "student123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["student"]
+    }
+  ]
+}
