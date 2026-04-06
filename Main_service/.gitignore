@@ -1,0 +1,10 @@
+# Environment — никогда не коммитить
+.env
+
+# Build artifacts
+/main-service
+*.exe
+
+# IDE
+.idea/
+.vscode/
