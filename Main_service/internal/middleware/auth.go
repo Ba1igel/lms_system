@@ -98,6 +98,43 @@ func RequireAdmin(kc *keycloak.Client) gin.HandlerFunc {
 	}
 }
 
+func RequireAdminOrTeacher(kc *keycloak.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token, ok := extractBearer(c)
+		if !ok {
+			_ = c.Error(apperror.Unauthorized("authorization header missing or invalid"))
+			c.Abort()
+			return
+		}
+
+		result, err := kc.IntrospectToken(c.Request.Context(), token)
+		if err != nil || result == nil || result.Active == nil || !*result.Active {
+			_ = c.Error(apperror.Unauthorized("token is invalid or expired"))
+			c.Abort()
+			return
+		}
+
+		claims, err := parseJWTClaims(token)
+		if err != nil {
+			_ = c.Error(apperror.Unauthorized("failed to parse token claims"))
+			c.Abort()
+			return
+		}
+
+		if !HasAnyRole(claims.RealmAccess.Roles, "admin", "teacher", "ROLE_ADMIN", "ROLE_TEACHER") {
+			_ = c.Error(apperror.Forbidden("forbidden: admin or teacher role required"))
+			c.Abort()
+			return
+		}
+
+		c.Set(ContextKeyUserID, claims.Sub)
+		c.Set(ContextKeyUsername, claims.PreferredUsername)
+		c.Set(ContextKeyRoles, claims.RealmAccess.Roles)
+
+		c.Next()
+	}
+}
+
 func extractBearer(c *gin.Context) (string, bool) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
@@ -144,6 +181,28 @@ func hasRole(roles []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func HasAnyRole(roles []string, targets ...string) bool {
+	for _, target := range targets {
+		if hasRole(roles, target) {
+			return true
+		}
+	}
+	return false
+}
+
+func RolesFromContext(c *gin.Context) []string {
+	rawRoles, ok := c.Get(ContextKeyRoles)
+	if !ok {
+		return nil
+	}
+
+	roles, ok := rawRoles.([]string)
+	if !ok {
+		return nil
+	}
+	return roles
 }
 
 type parseError struct{ msg string }

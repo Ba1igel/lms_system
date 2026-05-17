@@ -67,6 +67,20 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
   # ─────────────────────────────────────────────
   # MAIN SERVICE (courses, chapters, lessons)
   # ─────────────────────────────────────────────
@@ -86,9 +100,18 @@ services:
       DB_NAME: lms_main
       KEYCLOAK_URL: http://keycloak:8090
       KEYCLOAK_REALM: lms-realm
+      KEYCLOAK_CLIENT_ID: lms-backend
+      KEYCLOAK_CLIENT_SECRET: lms-backend-secret
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: lms-attachments
+      MINIO_USE_SSL: "false"
     depends_on:
       main-db:
         condition: service_healthy
+      minio:
+        condition: service_started
     restart: unless-stopped
 
   # ─────────────────────────────────────────────
@@ -114,3 +137,4 @@ services:
 volumes:
   keycloak_db_data:
   main_db_data:
+  minio_data:
