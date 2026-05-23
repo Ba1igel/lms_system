@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/baigel/lms/main-service/internal/config"
 	"github.com/baigel/lms/main-service/internal/handler"
 	"github.com/baigel/lms/main-service/internal/middleware"
@@ -9,6 +11,7 @@ import (
 	"github.com/baigel/lms/main-service/pkg/database"
 	"github.com/baigel/lms/main-service/pkg/keycloak"
 	"github.com/baigel/lms/main-service/pkg/logger"
+	"github.com/baigel/lms/main-service/pkg/storage"
 
 	_ "github.com/baigel/lms/main-service/docs" // swagger docs
 	"github.com/gin-gonic/gin"
@@ -51,14 +54,28 @@ func main() {
 	courseRepo := repository.NewCourseRepository(db)
 	chapterRepo := repository.NewChapterRepository(db)
 	lessonRepo := repository.NewLessonRepository(db)
+	attachmentRepo := repository.NewAttachmentRepository(db)
 
 	courseSvc := service.NewCourseService(courseRepo)
 	chapterSvc := service.NewChapterService(chapterRepo)
 	lessonSvc := service.NewLessonService(lessonRepo)
 
+	fileStorage, err := storage.NewMinIOStorage(context.Background(), storage.MinIOConfig{
+		Endpoint:  cfg.MinIOEndpoint,
+		AccessKey: cfg.MinIOAccessKey,
+		SecretKey: cfg.MinIOSecretKey,
+		Bucket:    cfg.MinIOBucket,
+		UseSSL:    cfg.MinIOUseSSL,
+	})
+	if err != nil {
+		logger.Log.Fatalf("Failed to connect to MinIO: %v", err)
+	}
+	attachmentSvc := service.NewAttachmentService(attachmentRepo, lessonRepo, fileStorage)
+
 	courseHandler := handler.NewCourseHandler(courseSvc)
 	chapterHandler := handler.NewChapterHandler(chapterSvc)
 	lessonHandler := handler.NewLessonHandler(lessonSvc)
+	attachmentHandler := handler.NewAttachmentHandler(attachmentSvc)
 
 	kc := keycloak.New(
 		cfg.KeycloakURL,
@@ -103,6 +120,16 @@ func main() {
 		admin.POST("/lessons", lessonHandler.CreateLesson)
 		admin.PUT("/lessons/:id", lessonHandler.UpdateLesson)
 		admin.DELETE("/lessons/:id", lessonHandler.DeleteLesson)
+	}
+
+	teacherFiles := api.Group("", middleware.RequireAdminOrTeacher(kc))
+	{
+		teacherFiles.POST("/upload", attachmentHandler.Upload)
+	}
+
+	authenticated := api.Group("", middleware.RequireAuth(kc))
+	{
+		authenticated.GET("/download", attachmentHandler.Download)
 	}
 
 	logger.Log.WithField("port", cfg.AppPort).Info("Starting server...")

@@ -14,7 +14,7 @@ type CourseService interface {
 	CreateCourse(course *model.Course) error
 	GetCourseByID(id uint) (*model.Course, error)
 	GetAllCourses(p pagination.Params) ([]model.Course, int64, error)
-	UpdateCourse(course *model.Course) (*model.Course, error)
+	UpdateCourse(id uint, updates map[string]any) (*model.Course, error)
 	DeleteCourse(id uint) error
 }
 
@@ -52,15 +52,19 @@ func (s *courseService) GetAllCourses(p pagination.Params) ([]model.Course, int6
 	return courses, total, nil
 }
 
-func (s *courseService) UpdateCourse(course *model.Course) (*model.Course, error) {
-	if err := s.repo.Update(course); err != nil {
+func (s *courseService) UpdateCourse(id uint, updates map[string]any) (*model.Course, error) {
+	if _, err := s.GetCourseByID(id); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Update(id, updates); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperror.NotFound("course not found")
 		}
 		return nil, apperror.Internal("failed to update course", err)
 	}
 
-	updated, err := s.repo.GetByID(course.ID)
+	updated, err := s.repo.GetByID(id)
 	if err != nil {
 		return nil, apperror.Internal("failed to fetch updated course", err)
 	}

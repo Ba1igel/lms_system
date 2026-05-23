@@ -21,6 +21,12 @@ type Config struct {
 	KeycloakRealm        string
 	KeycloakClientID     string
 	KeycloakClientSecret string
+
+	MinIOEndpoint  string
+	MinIOAccessKey string
+	MinIOSecretKey string
+	MinIOBucket    string
+	MinIOUseSSL    bool
 }
 
 func Load() *Config {
@@ -41,6 +47,12 @@ func Load() *Config {
 		KeycloakRealm:        getEnv("KEYCLOAK_REALM", ""),
 		KeycloakClientID:     getEnv("KEYCLOAK_CLIENT_ID", ""),
 		KeycloakClientSecret: getEnv("KEYCLOAK_CLIENT_SECRET", ""),
+
+		MinIOEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
+		MinIOAccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
+		MinIOSecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
+		MinIOBucket:    getEnv("MINIO_BUCKET", "lms-attachments"),
+		MinIOUseSSL:    getEnv("MINIO_USE_SSL", "false") == "true",
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -58,6 +70,10 @@ func (c *Config) validate() error {
 		"KEYCLOAK_REALM":         c.KeycloakRealm,
 		"KEYCLOAK_CLIENT_ID":     c.KeycloakClientID,
 		"KEYCLOAK_CLIENT_SECRET": c.KeycloakClientSecret,
+		"MINIO_ENDPOINT":         c.MinIOEndpoint,
+		"MINIO_ACCESS_KEY":       c.MinIOAccessKey,
+		"MINIO_SECRET_KEY":       c.MinIOSecretKey,
+		"MINIO_BUCKET":           c.MinIOBucket,
 	}
 
 	for key, val := range required {

@@ -10,7 +10,7 @@ type CourseRepository interface {
 	Create(course *model.Course) error
 	GetByID(id uint) (*model.Course, error)
 	GetAll(p pagination.Params) ([]model.Course, int64, error)
-	Update(course *model.Course) error
+	Update(id uint, updates map[string]any) error
 	Delete(id uint) error
 }
 
@@ -49,10 +49,17 @@ func (r *courseRepository) GetAll(p pagination.Params) ([]model.Course, int64, e
 	return courses, total, nil
 }
 
-func (r *courseRepository) Update(course *model.Course) error {
-	return r.db.Save(course).Error
+func (r *courseRepository) Update(id uint, updates map[string]any) error {
+	return r.db.Model(&model.Course{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (r *courseRepository) Delete(id uint) error {
-	return r.db.Delete(&model.Course{}, id).Error
+	result := r.db.Delete(&model.Course{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

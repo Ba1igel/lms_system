@@ -117,17 +117,17 @@ func (_m *CourseRepository) GetByID(id uint) (*model.Course, error) {
 	return r0, r1
 }
 
-// Update provides a mock function with given fields: course
-func (_m *CourseRepository) Update(course *model.Course) error {
-	ret := _m.Called(course)
+// Update provides a mock function with given fields: id, updates
+func (_m *CourseRepository) Update(id uint, updates map[string]any) error {
+	ret := _m.Called(id, updates)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.Course) error); ok {
-		r0 = rf(course)
+	if rf, ok := ret.Get(0).(func(uint, map[string]any) error); ok {
+		r0 = rf(id, updates)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -15,6 +15,16 @@ type CourseHandler struct {
 	service service.CourseService
 }
 
+type createCourseRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+}
+
+type updateCourseRequest struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+}
+
 func NewCourseHandler(service service.CourseService) *CourseHandler {
 	return &CourseHandler{service: service}
 }
@@ -31,12 +41,16 @@ func NewCourseHandler(service service.CourseService) *CourseHandler {
 // @Failure 500 {object} map[string]interface{}
 // @Router /courses [post]
 func (h *CourseHandler) CreateCourse(c *gin.Context) {
-	var course model.Course
-	if err := c.ShouldBindJSON(&course); err != nil {
+	var req createCourseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(apperror.BadRequest("invalid request payload", err))
 		return
 	}
 
+	course := model.Course{
+		Name:        req.Name,
+		Description: req.Description,
+	}
 	if err := h.service.CreateCourse(&course); err != nil {
 		_ = c.Error(err)
 		return
@@ -80,14 +94,25 @@ func (h *CourseHandler) UpdateCourse(c *gin.Context) {
 		return
 	}
 
-	var course model.Course
-	if err := c.ShouldBindJSON(&course); err != nil {
+	var req updateCourseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(apperror.BadRequest("invalid request payload", err))
 		return
 	}
-	course.ID = uint(id)
 
-	updated, err := h.service.UpdateCourse(&course)
+	updates := make(map[string]any)
+	if req.Name != nil {
+		updates["name"] = *req.Name
+	}
+	if req.Description != nil {
+		updates["description"] = *req.Description
+	}
+	if len(updates) == 0 {
+		_ = c.Error(apperror.BadRequest("no fields to update", nil))
+		return
+	}
+
+	updated, err := h.service.UpdateCourse(uint(id), updates)
 	if err != nil {
 		_ = c.Error(err)
 		return
