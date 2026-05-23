@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/baigel/lms/user-service/internal/config"
 	"github.com/baigel/lms/user-service/internal/handler"
 	"github.com/baigel/lms/user-service/internal/middleware"
 	"github.com/baigel/lms/user-service/internal/service"
 	"github.com/baigel/lms/user-service/keycloak"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -24,15 +24,16 @@ func main() {
 	h := handler.New(svc)
 	mw := middleware.New(kc)
 
-	http.HandleFunc("/auth/login", h.Login)
-
-	http.HandleFunc("/auth/refresh", h.Refresh)
-
-	http.HandleFunc("/auth/logout", h.Logout)
-
-	http.Handle("/auth/register", mw.RequireAdmin(http.HandlerFunc(h.Register)))
+	router := gin.Default()
+	auth := router.Group("/auth")
+	{
+		auth.POST("/login", h.Login)
+		auth.POST("/refresh", h.Refresh)
+		auth.POST("/logout", h.Logout)
+		auth.POST("/register", mw.RequireAdmin(), h.Register)
+	}
 
 	addr := fmt.Sprintf(":%s", cfg.AppPort)
 	log.Printf("User Service is running on port %s", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	log.Fatal(router.Run(addr))
 }

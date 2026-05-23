@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/baigel/lms/user-service/keycloak"
+	"github.com/gin-gonic/gin"
 )
 
 type Middleware struct {
@@ -32,34 +33,37 @@ type keycloakClaims struct {
 //  2. Проверить активность токена через Keycloak introspect endpoint
 //  3. Распарсить JWT payload → получить realm_access.roles
 //  4. Убедиться, что в ролях есть "admin"
-func (m *Middleware) RequireAdmin(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		accessToken, ok := extractBearerToken(r)
+func (m *Middleware) RequireAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		accessToken, ok := extractBearerToken(c.Request)
 		if !ok {
-			http.Error(w, `{"error":"authorization header missing or invalid"}`, http.StatusUnauthorized)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization header missing or invalid"})
+			c.Abort()
 			return
 		}
 
-		result, err := m.kc.IntrospectToken(r.Context(), accessToken)
+		result, err := m.kc.IntrospectToken(c.Request.Context(), accessToken)
 		if err != nil || result == nil || result.Active == nil || !*result.Active {
-			http.Error(w, `{"error":"token is invalid or expired"}`, http.StatusUnauthorized)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is invalid or expired"})
+			c.Abort()
 			return
 		}
 
-	
 		claims, err := parseJWTClaims(accessToken)
 		if err != nil {
-			http.Error(w, `{"error":"failed to parse token claims"}`, http.StatusUnauthorized)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "failed to parse token claims"})
+			c.Abort()
 			return
 		}
 
 		if !hasRole(claims.RealmAccess.Roles, "admin") {
-			http.Error(w, `{"error":"forbidden: admin role required"}`, http.StatusForbidden)
+			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden: admin role required"})
+			c.Abort()
 			return
 		}
 
-		next.ServeHTTP(w, r)
-	})
+		c.Next()
+	}
 }
 
 // extractBearerToken — вытащить токен из "Authorization: Bearer <token>"

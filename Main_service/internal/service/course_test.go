@@ -122,12 +122,14 @@ func TestCourseService_UpdateCourse(t *testing.T) {
 	mockRepo := mocks.NewCourseRepository(t)
 	svc := NewCourseService(mockRepo)
 
-	course := &model.Course{ID: 1, Name: "Updated Course"}
+	current := &model.Course{ID: 1, Name: "Old Course", Description: "from db"}
 	fresh := &model.Course{ID: 1, Name: "Updated Course", Description: "from db"}
-	mockRepo.On("Update", course).Return(nil)
+	updates := map[string]any{"name": "Updated Course"}
+	mockRepo.On("GetByID", uint(1)).Return(current, nil).Once()
+	mockRepo.On("Update", uint(1), updates).Return(nil)
 	mockRepo.On("GetByID", uint(1)).Return(fresh, nil)
 
-	result, err := svc.UpdateCourse(course)
+	result, err := svc.UpdateCourse(1, updates)
 	assert.NoError(t, err)
 	assert.Equal(t, fresh, result)
 	mockRepo.AssertExpectations(t)
@@ -137,10 +139,10 @@ func TestCourseService_UpdateCourse_NotFound(t *testing.T) {
 	mockRepo := mocks.NewCourseRepository(t)
 	svc := NewCourseService(mockRepo)
 
-	course := &model.Course{ID: 99, Name: "Ghost Course"}
-	mockRepo.On("Update", course).Return(gorm.ErrRecordNotFound)
+	updates := map[string]any{"name": "Ghost Course"}
+	mockRepo.On("GetByID", uint(99)).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := svc.UpdateCourse(course)
+	result, err := svc.UpdateCourse(99, updates)
 
 	assert.Nil(t, result)
 	assert.Error(t, err)
@@ -154,10 +156,12 @@ func TestCourseService_UpdateCourse_RepoError(t *testing.T) {
 	mockRepo := mocks.NewCourseRepository(t)
 	svc := NewCourseService(mockRepo)
 
-	course := &model.Course{ID: 1, Name: "Updated Course"}
-	mockRepo.On("Update", course).Return(errors.New("db error"))
+	current := &model.Course{ID: 1, Name: "Old Course"}
+	updates := map[string]any{"name": "Updated Course"}
+	mockRepo.On("GetByID", uint(1)).Return(current, nil)
+	mockRepo.On("Update", uint(1), updates).Return(errors.New("db error"))
 
-	result, err := svc.UpdateCourse(course)
+	result, err := svc.UpdateCourse(1, updates)
 
 	assert.Nil(t, result)
 	assert.Error(t, err)
